@@ -216,67 +216,104 @@ private:
 struct rcConfig
 {
 	/// The width of the field along the x-axis. [Limit: >= 0] [Units: vx]
+	/// 横向的格子数量，单位格子
 	int width;
 
 	/// The height of the field along the z-axis. [Limit: >= 0] [Units: vx]
+	/// 纵向的格子数量，单位格子
 	int height;
 	
 	/// The width/height size of tile's on the xz-plane. [Limit: >= 0] [Units: vx]
+	/// ???
 	int tileSize;
 	
 	/// The size of the non-navigable border around the heightfield. [Limit: >=0] [Units: vx]
+	/// ???
 	int borderSize;
 
 	/// The xz-plane cell size to use for fields. [Limit: > 0] [Units: wu] 
+	/// 横向的格子大小，单位世界坐标, 即: 横向分辨率
+	/// 一般来说, 人形生物, 采用 agent radius 除以 2~4 比较合适, 以保证导航网格的精度和性能之间的平衡.
+	/// 对于 agent radius 选择为 0.25m 的人形生物, cell size 选择 0.1m ~ 0.2m 比较合适, 并且越小约精确度越高, 但性能越差
 	float cs;
 
 	/// The y-axis cell size to use for fields. [Limit: > 0] [Units: wu]
+	/// 高度格子大小，单位世界坐标, 即: 纵向分辨率
+	/// 一般来说, 人形生物, 采用 agent height 除以 10~20 比较合适, 以保证导航网格的精度和性能之间的平衡.
 	float ch;
 
 	/// The minimum bounds of the field's AABB. [(x, y, z)] [Units: wu]
+	/// AABB的最小边界坐标，单位世界坐标
 	float bmin[3]; 
 
 	/// The maximum bounds of the field's AABB. [(x, y, z)] [Units: wu]
+	/// AABB的最大边界坐标，单位世界坐标
 	float bmax[3];
 
 	/// The maximum slope that is considered walkable. [Limits: 0 <= value < 90] [Units: Degrees] 
+	/// 可行走的最大坡度，单位度
 	float walkableSlopeAngle;
 
 	/// Minimum floor to 'ceiling' height that will still allow the floor area to 
 	/// be considered walkable. [Limit: >= 3] [Units: vx] 
+	/// 可行走的最小高度，单位格子
 	int walkableHeight;
 	
 	/// Maximum ledge height that is considered to still be traversable. [Limit: >=0] [Units: vx] 
+	/// 可行走的最大跨越高度，单位格子
 	int walkableClimb;
 	
 	/// The distance to erode/shrink the walkable area of the heightfield away from 
 	/// obstructions.  [Limit: >=0] [Units: vx] 
+	/// 从障碍物侵蚀/缩小可行走区域的距离，单位格子
 	int walkableRadius;
 	
 	/// The maximum allowed length for contour edges along the border of the mesh. [Limit: >=0] [Units: vx] 
+	/// 网格边界上轮廓边的最大允许长度，单位格子, 避免过长的边界边导致导航网格的精度过低, 但过短的边界边会增加导航网格的复杂度, 导致性能下降
 	int maxEdgeLen;
 	
 	/// The maximum distance a simplified contour's border edges should deviate 
 	/// the original raw contour. [Limit: >=0] [Units: vx]
+	/// 轮廓简化阶段允许的最大几何误差，单位格子, 轮廓简化阶段会将原始轮廓简化为更少的顶点, 以减少导航网格的复杂度
+	/// 它与 maxEdgeLen 的区别在于, maxEdgeLen 是对边界边的长度进行限制, 而 maxSimplificationError 是对边界边的几何误差进行限制, 这两者是不同的概念
 	float maxSimplificationError;
 	
 	/// The minimum number of cells allowed to form isolated island areas. [Limit: >=0] [Units: vx] 
+	/// 区域合并阶段的最小区域面积阈值
+	/// voxel → walkable spans → 分水岭分区 → region
+	/// minRegionArea = 8 ~ 64  （常见）
+	/// 64 ~ 128      （大地图更干净）
+	/// minRegionArea ≈ (agentRadius * 4 / cellSize)^2 更稳妥的方式, 区域至少能容纳几步移动空间
+	/// (0.25*4/0.1)^2 = 100
+	/// 太小 很多小碎片保留, path 可能进入“奇怪小角落”
+	/// 太大 可能删除合法小平台, 删除边缘走道, 影响设计预期
+	/// “小到什么程度的可行走区域算作噪声，可以被消除或合并”
 	int minRegionArea;
 	
 	/// Any regions with a span count smaller than this value will, if possible, 
 	/// be merged with larger regions. [Limit: >=0] [Units: vx] 
+	/// 区域生成阶段的“优先合并阈值”
+	/// mergeRegionArea = “尽量并掉的小块”
+	/// minRegionArea = “太小就不能存在”
 	int mergeRegionArea;
 	
 	/// The maximum number of vertices allowed for polygons generated during the 
 	/// contour to polygon conversion process. [Limit: >= 3] 
+	/// 通常 保持默认 6 就是最优工程解。
+	/// “一个 NavMesh 多边形最多允许几条边”。
 	int maxVertsPerPoly;
 	
 	/// Sets the sampling distance to use when generating the detail mesh.
 	/// (For height detail only.) [Limits: 0 or >= 0.9] [Units: wu] 
+	/// Detail Mesh 采样间距参数
+	/// 常见推荐值, detailSampleDist = 6 * cellSize, 但是要看游戏类型
 	float detailSampleDist;
 	
 	/// The maximum distance the detail mesh surface should deviate from heightfield
 	/// data. (For height detail only.) [Limit: >=0] [Units: wu] 
+	/// Detail Mesh 的最大允许高度误差
+	/// detailSampleDist	 采样间距（采样多密）
+	/// detailSampleMaxError 允许高度偏差（可简化多少）
 	float detailSampleMaxError;
 };
 
